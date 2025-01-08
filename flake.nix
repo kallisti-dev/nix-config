@@ -18,6 +18,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.nix-darwin.follows = "darwin";
     };
+
     homebrew-bundle = {
       url = "github:homebrew/homebrew-bundle";
       flake = false;
@@ -38,6 +39,12 @@
       flake = false;
     };
 
+    nix-on-droid = {
+      url = "github:nix-community/nix-on-droid/release-24.05";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
+    };
+
     kubelogin = {
       url = "github:int128/kubelogin";
       flake = false;
@@ -52,6 +59,7 @@
     inputs @ { self
     , darwin
     , nixpkgs
+    , nix-on-droid
     , ...
     }:
     let
@@ -79,7 +87,8 @@
             , system ? defaultDarwinSystem
             , modules
             }:
-            let
+            darwin.lib.darwinSystem {
+              inherit system modules;
               specialArgs = (inputs // {
                 inherit user system inputs;
               });
@@ -87,9 +96,6 @@
                 inherit system overlays;
                 config.allowUnfree = true;
               };
-            in
-            darwin.lib.darwinSystem {
-              inherit system specialArgs pkgs modules; 
             };
         in
         {
@@ -103,6 +109,27 @@
               ./machines/influx-macbook.nix
             ];
           };
+        };
+
+      nixOnDroidConfigurations.default =
+        let
+          user = defaultUser;
+          system = "aarch64-linux";
+        in
+        nix-on-droid.lib.nixOnDroidConfiguration {
+          extraSpecialArgs =
+            (inputs // {
+              inherit user system inputs;
+            });
+          pkgs = import
+            nixpkgs
+            {
+              inherit system overlays;
+              config.allowUnfree = true;
+              modules = [
+                ./machines/android.nix
+              ];
+            };
         };
     };
 }
